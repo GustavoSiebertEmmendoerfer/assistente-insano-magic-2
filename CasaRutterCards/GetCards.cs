@@ -1,31 +1,31 @@
 using System.Net;
+using CasaRutterCards.Entities;
+using CasaRutterCards.Utils;
 using HtmlAgilityPack;
+using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 
 namespace CasaRutterCards;
 
 public class GetCards
 {
-    private string[] columns = { "Edição", "Idioma", "Qualidade", "Extras", "Estoque"};
-    public async Task<List<Card>> Get(int index, int startValue)
+    private readonly AppDbContext _context;
+    public GetCards(AppDbContext context)
     {
-        List<Card> cards = new();
-        for(int i = startValue; i<=index; i++)
+        _context = context;
+    }
+    
+    private string[] columns = { "Edição", "Idioma", "Qualidade", "Extras", "Estoque"}; 
+    int valueToBeDivided = 1;
+
+    public async Task Execute(int index, int startValue)
+    { 
+        for(int i = startValue; i <= index; i++)
         {
+            ConsoleProgress(i);
+            
             var url = $"https://www.casaderuter.com.br/?view=ecom/item&tcg=1&card={i}";
-            Console.Clear();
-            var progress = ((double)i / index) * 100;
-            Console.WriteLine($"Card Progress of: %{progress}");
-            Console.WriteLine($"Cards range from - {i} to {index}");
-            var client = new HttpClient();
-
-            var response = await client.GetAsync(url);
-
-            var html = await response.Content.ReadAsStringAsync();
-
-            var htmlDoc = new HtmlDocument();
-
-            htmlDoc.LoadHtml(WebUtility.HtmlDecode(html));
-
+            var htmlDoc = await GetHtmlDoc(url);
             try
             {
                 if (htmlDoc.DocumentNode.SelectNodes("//div[@class='alertaErro']").Count() < 2)
@@ -39,42 +39,146 @@ public class GetCards
                         .Select(x => x.InnerText.Trim()).Distinct().ToList();
 
                     pop.RemoveAll(str => str == "");
-
-                    Card card;
-
-                    if (pop.Count() > 1)
-                        card = new Card(i, pop.ElementAt(0), pop.ElementAt(1));
-                    else
-                        card = new Card(i, pop.ElementAt(0), "");
                     
-                    foreach (var description in cardDescriptions)
+                    var card = await _context.Cards.Where(x => x.RutterCode == i).FirstOrDefaultAsync();
+                    if (card != null)
                     {
-                        string[] lines = description.InnerText
-                            .Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries)
-                            .Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToArray();
-                        GetValues(lines, card);
+                        foreach (var description in cardDescriptions)
+                        {
+                            string[] lines = description.InnerText
+                                .Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+                                .Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToArray();
+                            await GetExistingCardValues(lines, card);
+                            Console.WriteLine($"Card Atualizada {card.GetName()} - {card.RutterCode}");
+                        }
                     }
-
-                    cards.Add(card);
+                    else
+                    {
+                        card = pop.Count() > 1 ? new Card(i, pop.ElementAt(0), pop.ElementAt(1)) : new Card(i, pop.ElementAt(0), "");
+                        await _context.AddAsync(card);
+                        await _context.SaveChangesAsync();
+                        
+                        foreach (var description in cardDescriptions)
+                        {
+                            
+                            string[] lines = description.InnerText
+                                .Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+                                .Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToArray();
+                            await GetNewCardValues(lines, card);
+                            
+                            Console.WriteLine($"Card Criada {card.GetName()} - {card.RutterCode}");
+                        }
+                    }
                 }
                 else
                 {
-                    break;
+                    continue;
                 }
             }
             catch (Exception exception)
             {
                 Console.WriteLine(exception.Message);
+                Console.WriteLine(exception.InnerException);
             }
         }
+        
+        void ConsoleProgress(int i)
+        {
+            var valueToDivide = index - startValue;
+            var progress = Math.Abs(((double)valueToBeDivided / valueToDivide) * 100);
+            valueToBeDivided++;
+            Console.WriteLine($"Card Progress of: %{progress}");
+            Console.WriteLine($"Cards range from - {i} to {index}");
+        }
 
-        return cards;
+        async Task<HtmlDocument> GetHtmlDoc(string url)
+        {
+            var client = new HttpClient();
+
+            var response = await client.GetAsync(url);
+
+            var html = await response.Content.ReadAsStringAsync();
+
+            var htmlDoc = new HtmlDocument();
+
+            htmlDoc.LoadHtml(WebUtility.HtmlDecode(html));
+            return htmlDoc;
+        }
     }
-    public void GetValues(string [] values, Card card)
-    { 
+
+    private async Task GetExistingCardValues(string[] values, Card card)
+    {
+        try
+        {
+            var dic = dicionaryWithValues(values, out var pricesValues);
+            
+            var editionName = dic.GetValue((int)CardColumnEnum.Edition);
+            
+            var edition = await GetEditionAsync(editionName);
+            
+            var item = card.CardItems.FirstOrDefault(x => x.Edition.Name == edition.Name);
+            
+            if (item == null)
+            {
+                var quantity = dic.GetValue((int)CardColumnEnum.Quantity);
+
+                var quality = dic.GetValue((int)CardColumnEnum.Quality);
+
+                var extra = dic.GetValue((int)CardColumnEnum.Extra);
+                
+                item = new CardItem(edition.Id, int.Parse(quantity.Replace("unid.", "")), quality, extra);
+                
+                SetPrices(pricesValues, item);
+                
+                card.AddCardItem(item); 
+                _context.Cards.Update(card);
+                await _context.SaveChangesAsync();
+            }
+            
+            SetPrices(pricesValues, item);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+    }
+    private async Task GetNewCardValues(string [] values, Card card)
+    {
+        try
+        {
+            var dic = dicionaryWithValues(values, out var pricesValues);
+
+            var editionName = dic.GetValue((int)CardColumnEnum.Edition);
+
+            var edition = await GetEditionAsync(editionName);
+            
+            var quantity = dic.GetValue((int)CardColumnEnum.Quantity);
+
+            var quality = dic.GetValue((int)CardColumnEnum.Quality);
+
+            var extra = dic.GetValue((int)CardColumnEnum.Extra);
+            
+            var item = new CardItem(edition.Id, int.Parse(quantity.Replace("unid.", "")), quality, extra);
+            
+            SetPrices(pricesValues, item);
+            
+            card.AddCardItem(item);
+            _context.Cards.Update(card);
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+    }
+
+    private Dictionary<string, string> dicionaryWithValues(string[] values, out List<string> pricesValues)
+    {
         var dic = new Dictionary<string, string>();
         var realValues = values.Where(x => !columns.Contains(x)).ToArray();
-        var pricesValues = realValues.Where(x => x.StartsWith("R$")).ToList();
+        pricesValues = realValues.Where(x => x.StartsWith("R$")).ToList();
         foreach (var value in realValues.Except(pricesValues))
         {
             var column = values[Array.IndexOf(values, value) - 1];
@@ -82,18 +186,47 @@ public class GetCards
                 dic.Add(column,value);
         }
 
-        var edition = new Edition(dic);
-        
-        var prices = new List<Price>();
-        foreach (var price in pricesValues)
+        return dic;
+    }
+
+    private static void SetPrices(List<string> pricesValues, CardItem item)
+    {
+        try
         {
-            var priceString = price.Substring(2, price.Length - 2);
-            
-            var value = double.Parse(priceString);
-            
-            var newPrice = new Price(edition.Id, value, pricesValues.Last() == price);
-            edition.AddPrice(newPrice);
+            var values = pricesValues.Select(x => double.Parse(x.Replace("R$", ""))).ToList();
+            item.Prices.Clear();
+            foreach (var price in values)
+            {
+                var isDiscount = pricesValues.Count() > 2 && values.Last() == price;
+                var newPrice = new Price(item.Id, price, isDiscount);
+                item.AddPrice(newPrice);
+            }
         }
-        card.AddEdition(edition);
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+    }
+
+    private async Task<Edition> GetEditionAsync(string name)
+    {
+        try
+        {
+            var edition = await _context.Editions.Where(x => x.Name.Contains(name)).FirstOrDefaultAsync();
+
+            if (edition != null) return edition;
+            
+            edition = new Edition(name);
+            await _context.Editions.AddAsync(edition);
+            await _context.SaveChangesAsync();
+
+            return edition;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
     }
 }

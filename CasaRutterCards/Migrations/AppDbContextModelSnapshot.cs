@@ -22,13 +22,16 @@ namespace CasaRutterCards.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("CasaRutterCards.Card", b =>
+            modelBuilder.Entity("CasaRutterCards.Entities.Card", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("NameEnglish")
                         .IsRequired()
@@ -38,12 +41,18 @@ namespace CasaRutterCards.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("RutterCode")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.ToTable("Cards");
                 });
 
-            modelBuilder.Entity("CasaRutterCards.Edition", b =>
+            modelBuilder.Entity("CasaRutterCards.Entities.CardItem", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -54,15 +63,13 @@ namespace CasaRutterCards.Migrations
                     b.Property<int>("CardId")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("EditionId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Extra")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Language")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -70,17 +77,22 @@ namespace CasaRutterCards.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int?>("Quantity")
+                    b.Property<int>("Quantity")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CardId");
 
-                    b.ToTable("Editions");
+                    b.HasIndex("EditionId");
+
+                    b.ToTable("Items");
                 });
 
-            modelBuilder.Entity("CasaRutterCards.Price", b =>
+            modelBuilder.Entity("CasaRutterCards.Entities.Edition", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -88,46 +100,83 @@ namespace CasaRutterCards.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("EditionId")
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Editions");
+                });
+
+            modelBuilder.Entity("CasaRutterCards.Entities.Price", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    b.Property<bool>("IsDiscont")
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CardItemId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("HasDiscont")
                         .HasColumnType("boolean");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<double?>("Value")
                         .HasColumnType("double precision");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EditionId");
+                    b.HasIndex("CardItemId");
 
                     b.ToTable("Prices");
                 });
 
-            modelBuilder.Entity("CasaRutterCards.Edition", b =>
+            modelBuilder.Entity("CasaRutterCards.Entities.CardItem", b =>
                 {
-                    b.HasOne("CasaRutterCards.Card", null)
-                        .WithMany("Editons")
+                    b.HasOne("CasaRutterCards.Entities.Card", null)
+                        .WithMany("CardItems")
                         .HasForeignKey("CardId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("CasaRutterCards.Entities.Edition", "Edition")
+                        .WithMany()
+                        .HasForeignKey("EditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Edition");
                 });
 
-            modelBuilder.Entity("CasaRutterCards.Price", b =>
+            modelBuilder.Entity("CasaRutterCards.Entities.Price", b =>
                 {
-                    b.HasOne("CasaRutterCards.Edition", null)
+                    b.HasOne("CasaRutterCards.Entities.CardItem", null)
                         .WithMany("Prices")
-                        .HasForeignKey("EditionId")
+                        .HasForeignKey("CardItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("CasaRutterCards.Card", b =>
+            modelBuilder.Entity("CasaRutterCards.Entities.Card", b =>
                 {
-                    b.Navigation("Editons");
+                    b.Navigation("CardItems");
                 });
 
-            modelBuilder.Entity("CasaRutterCards.Edition", b =>
+            modelBuilder.Entity("CasaRutterCards.Entities.CardItem", b =>
                 {
                     b.Navigation("Prices");
                 });

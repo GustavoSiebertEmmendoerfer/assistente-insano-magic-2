@@ -15,11 +15,15 @@
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
+      <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
       <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="7.0.0" />
     </ItemGroup>
 
     <ItemGroup>
-      <Compile Remove="Columns.cs" />
+      <Content Include="CasaRutterCards.sln" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Remove="CardsDesire.json" />
+    </ItemGroup>
 </Project>

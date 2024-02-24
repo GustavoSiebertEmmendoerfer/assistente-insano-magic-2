@@ -1,4 +1,5 @@
 ﻿using CasaRutterCards;
+using CasaRutterCards.Find_Cards;
 using Microsoft.EntityFrameworkCore;
 
 class Program
@@ -12,26 +13,22 @@ class Program
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
         optionsBuilder.UseNpgsql(connectionString);
         var context = new AppDbContext(optionsBuilder.Options);
+        Console.WriteLine("Deseja Registrar Cards ou Ler");
+        var i = Console.ReadLine();
+        if (i == "ler")
+        {
+            var getCardsFromTxt = new GetCardsFromTxt(context);
+            await getCardsFromTxt.GetCards();
+        }
+        else
+        {
             Console.WriteLine("Apartir de qual Id começar:");
             var start = int.Parse(Console.ReadLine());
             Console.WriteLine("Qual o Id deve acabar:");
             var end = int.Parse(Console.ReadLine());
-            await SaveCards(end, start, context);
+            var getCards = new  GetCards(context);
+            await getCards.Execute(end,start);
+        }
         
-    }
-
-    public static async Task SaveCards(int indexToGo, int indexToStart, AppDbContext context)
-    {
-        var cards = new GetCards();
-        
-        var allCards = await cards.Get(indexToGo, indexToStart);
-
-        var createCards = allCards.Where(cardCreate => !context.Cards.Any(x => x.Id == cardCreate.Id)).Select(x => x);
-        var updateCards = allCards.Where(cardUpdate => context.Cards.Any(x => x.Id == cardUpdate.Id)).Select(x => x);
-
-
-        await context.Cards.AddRangeAsync(createCards);    
-        context.Cards.UpdateRange(updateCards);
-        await context.SaveChangesAsync();
     }
 }

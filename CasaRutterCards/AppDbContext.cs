@@ -1,3 +1,4 @@
+using CasaRutterCards.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace CasaRutterCards;
@@ -7,6 +8,7 @@ public class AppDbContext : DbContext
     public AppDbContext() { }
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) {}
     public DbSet<Card> Cards { get; set; }
+    public DbSet<CardItem> Items { get; set; }
     public DbSet<Edition> Editions { get; set; }
     public DbSet<Price> Prices { get; set; }
 
