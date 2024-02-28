@@ -17,6 +17,7 @@
       </PackageReference>
       <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
       <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="7.0.0" />
+      <PackageReference Include="Spectre.Console" Version="0.48.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -25,5 +26,9 @@
 
     <ItemGroup>
       <None Remove="CardsDesire.json" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="Find Cards\GetCardsFromTxt.cs" />
     </ItemGroup>
 </Project>

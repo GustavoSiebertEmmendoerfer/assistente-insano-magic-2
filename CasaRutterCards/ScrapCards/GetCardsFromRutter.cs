@@ -1,5 +1,6 @@
 using System.Net;
 using CasaRutterCards.Entities;
+using CasaRutterCards.Infra;
 using CasaRutterCards.Utils;
 using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
@@ -7,103 +8,38 @@ using Newtonsoft.Json;
 
 namespace CasaRutterCards;
 
-public class GetCards
+public class GetCardsFromRutter : IGetCardsFromRutter
 {
     private readonly AppDbContext _context;
-    public GetCards(AppDbContext context)
+    private readonly ICardsRepository _cardsRepository;
+    public GetCardsFromRutter(AppDbContext context, ICardsRepository cardsRepository)
     {
         _context = context;
+        _cardsRepository = cardsRepository;
     }
     
-    private string[] columns = { "Edição", "Idioma", "Qualidade", "Extras", "Estoque"}; 
-    int valueToBeDivided = 1;
+    private string[] columns = { "Edição", "Idioma", "Qualidade", "Extras", "Estoque"};
 
-    public async Task Execute(int index, int startValue)
+    public async Task Execute(int startValue, int endValue)
     { 
-        for(int i = startValue; i <= index; i++)
-        {
-            ConsoleProgress(i);
-            
-            var url = $"https://www.casaderuter.com.br/?view=ecom/item&tcg=1&card={i}";
-            var htmlDoc = await GetHtmlDoc(url);
-            try
-            {
-                if (htmlDoc.DocumentNode.SelectNodes("//div[@class='alertaErro']").Count() < 2)
-                {
-                    var cardDescriptions = htmlDoc.DocumentNode.SelectNodes("//div[@class='table-cards-row']");
-                    
-                    var names = htmlDoc.DocumentNode.SelectSingleNode("//div[@class='nomes_cards']").Descendants();
-                    
-                    var pop = names
-                        .Where(x => x.InnerText != @"\n" || x.InnerText != "" || !string.IsNullOrWhiteSpace(x.InnerText))
-                        .Select(x => x.InnerText.Trim()).Distinct().ToList();
+        int totalNumbers = endValue - startValue + 1; // Total de números no intervalo
+        double percentIncrement = 100.0 / totalNumbers; // Porcentagem de incremento para cada número
 
-                    pop.RemoveAll(str => str == "");
-                    
-                    var card = await _context.Cards.Where(x => x.RutterCode == i).FirstOrDefaultAsync();
-                    if (card != null)
-                    {
-                        foreach (var description in cardDescriptions)
-                        {
-                            string[] lines = description.InnerText
-                                .Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries)
-                                .Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToArray();
-                            await GetExistingCardValues(lines, card);
-                            Console.WriteLine($"Card Atualizada {card.GetName()} - {card.RutterCode}");
-                        }
-                    }
-                    else
-                    {
-                        card = pop.Count() > 1 ? new Card(i, pop.ElementAt(0), pop.ElementAt(1)) : new Card(i, pop.ElementAt(0), "");
-                        await _context.AddAsync(card);
-                        await _context.SaveChangesAsync();
-                        
-                        foreach (var description in cardDescriptions)
-                        {
-                            
-                            string[] lines = description.InnerText
-                                .Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries)
-                                .Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToArray();
-                            await GetNewCardValues(lines, card);
-                            
-                            Console.WriteLine($"Card Criada {card.GetName()} - {card.RutterCode}");
-                        }
-                    }
-                }
-                else
-                {
-                    continue;
-                }
-            }
-            catch (Exception exception)
-            {
-                Console.WriteLine(exception.Message);
-                Console.WriteLine(exception.InnerException);
-            }
+        for(int rutterCode = startValue; rutterCode <= endValue; rutterCode++)
+        {
+            ConsoleProgress(rutterCode, percentIncrement);
+
+            await SaveCardByRutterCode(rutterCode);
         }
         
-        void ConsoleProgress(int i)
+        void ConsoleProgress(int i, double percentIncrement)
         {
-            var valueToDivide = index - startValue;
-            var progress = Math.Abs(((double)valueToBeDivided / valueToDivide) * 100);
-            valueToBeDivided++;
-            Console.WriteLine($"Card Progress of: %{progress}");
-            Console.WriteLine($"Cards range from - {i} to {index}");
+            Console.Clear();
+            var currentPercent = Math.Round(((i - startValue + 1) * percentIncrement));
+            Console.WriteLine($"Card Progress of: %{currentPercent}");
+            Console.WriteLine($"Cards range from - {i} to {endValue}");
         }
 
-        async Task<HtmlDocument> GetHtmlDoc(string url)
-        {
-            var client = new HttpClient();
-
-            var response = await client.GetAsync(url);
-
-            var html = await response.Content.ReadAsStringAsync();
-
-            var htmlDoc = new HtmlDocument();
-
-            htmlDoc.LoadHtml(WebUtility.HtmlDecode(html));
-            return htmlDoc;
-        }
     }
 
     private async Task GetExistingCardValues(string[] values, Card card)
@@ -209,6 +145,59 @@ public class GetCards
         }
     }
 
+    public async Task SaveCardByRutterCode(int rutterCode)
+    {
+        var url = $"https://www.casaderuter.com.br/?view=ecom/item&tcg=1&card={rutterCode}";
+        var htmlDoc = await HtmlDocumentUtils.GetHtmlDoc(url);
+        try
+        {
+            if (htmlDoc.DocumentNode.SelectNodes("//div[@class='alertaErro']").Count() < 2)
+            {
+                var cardDescriptions = htmlDoc.DocumentNode.SelectNodes("//div[@class='table-cards-row']");
+                
+                var names = htmlDoc.DocumentNode.SelectSingleNode("//div[@class='nomes_cards']").Descendants();
+                
+                var pop = names
+                    .Where(x => x.InnerText != @"\n" || x.InnerText != "" || !string.IsNullOrWhiteSpace(x.InnerText))
+                    .Select(x => x.InnerText.Trim()).Distinct().ToList();
+
+                pop.RemoveAll(str => str == "");
+                
+                var card = await _cardsRepository.GetCardByRutterCode(rutterCode);
+                if (card != null)
+                {
+                    foreach (var description in cardDescriptions)
+                    {
+                        string[] lines = description.InnerText
+                            .Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+                            .Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToArray();
+                        await GetExistingCardValues(lines, card);
+                    }
+                }
+                else
+                {
+                    card = pop.Count() > 1 ? new Card(rutterCode, pop.ElementAt(0), pop.ElementAt(1)) : new Card(rutterCode, pop.ElementAt(0), "");
+                    await _context.AddAsync(card);
+                    await _context.SaveChangesAsync();
+                    
+                    foreach (var description in cardDescriptions)
+                    {
+                        
+                        string[] lines = description.InnerText
+                            .Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+                            .Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToArray();
+                        await GetNewCardValues(lines, card);
+                    }
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine(exception.Message);
+            Console.WriteLine(exception.InnerException);
+        }
+    }
+
     private async Task<Edition> GetEditionAsync(string name)
     {
         try
@@ -229,4 +218,10 @@ public class GetCards
             throw;
         }
     }
+}
+
+public interface IGetCardsFromRutter
+{
+    Task Execute(int startValue, int endValue);
+    Task SaveCardByRutterCode(int rutterCode);
 }

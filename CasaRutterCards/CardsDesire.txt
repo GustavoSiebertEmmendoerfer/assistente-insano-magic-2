@@ -1,16 +1,7 @@
-Citadel of Pain
-City of Solitude
-Dictate of Karametra
-Eladamri's Vineyard
-Elemental Resonance
-Heartbeat of Spring
-Helix Pinnacle
-Leyline of Abundance
-Mana Flare
-Mana Reflection
 Manabarbs
-Overabundance
 Power Surge
+Geist da Capela
+Overabundance
 Quest for Renewal
 War's Toll
 Wound Reflection
