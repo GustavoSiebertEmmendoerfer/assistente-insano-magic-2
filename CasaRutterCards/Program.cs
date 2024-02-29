@@ -4,6 +4,7 @@ using CasaRutterCards.Find_Cards.CardAnalyser;
 using CasaRutterCards.Infra;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
 using Spectre.Console;
 
 class Program
@@ -88,7 +89,8 @@ class Program
                 case "Pegar carta por nome":
                     Console.WriteLine("Card Name:");
                     var i = Console.ReadLine();
-                    await _getCardByName.Get(i);
+                    var cards = await _getCardByName.Get(i);
+                    Console.WriteLine(JsonConvert.SerializeObject(cards, Formatting.Indented));
                     ContinueOperation();
                     break;
                 default:

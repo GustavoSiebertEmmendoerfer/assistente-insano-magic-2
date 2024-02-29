@@ -8,7 +8,7 @@ public static class CardColumns
         {
             case CardColumnEnum.Edition: return "Edição";
             case CardColumnEnum.Quality: return "Qualidade";
-            case CardColumnEnum.Extra: return "Extra";
+            case CardColumnEnum.Extra: return "Extras";
             case CardColumnEnum.Language: return "Idioma";
             case CardColumnEnum.Price: return "Preço";
             case CardColumnEnum.Quantity: return "Estoque";

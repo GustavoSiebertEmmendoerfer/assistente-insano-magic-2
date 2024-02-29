@@ -52,23 +52,25 @@ public class GetCardsFromRutter : IGetCardsFromRutter
             
             var edition = await GetEditionAsync(editionName);
             
-            var item = card.CardItems.FirstOrDefault(x => x.Edition.Name == edition.Name);
+            var quantity = dic.GetValue((int)CardColumnEnum.Quantity);
+
+            var quality = dic.GetValue((int)CardColumnEnum.Quality);
+
+            var extra = dic.GetValue((int)CardColumnEnum.Extra);
+            
+            var item = card.CardItems.FirstOrDefault(x => x.Edition.Name == edition.Name && x.Extra == extra);
             
             if (item == null)
             {
-                var quantity = dic.GetValue((int)CardColumnEnum.Quantity);
-
-                var quality = dic.GetValue((int)CardColumnEnum.Quality);
-
-                var extra = dic.GetValue((int)CardColumnEnum.Extra);
-                
                 item = new CardItem(edition.Id, int.Parse(quantity.Replace("unid.", "")), quality, extra);
-                
-                SetPrices(pricesValues, item);
                 
                 card.AddCardItem(item); 
                 _context.Cards.Update(card);
                 await _context.SaveChangesAsync();
+            }
+            else
+            {
+                item.Update(int.Parse(quantity.Replace("unid.", "")), quantity, extra);
             }
             
             SetPrices(pricesValues, item);
@@ -130,7 +132,6 @@ public class GetCardsFromRutter : IGetCardsFromRutter
         try
         {
             var values = pricesValues.Select(x => double.Parse(x.Replace("R$", ""))).ToList();
-            item.Prices.Clear();
             foreach (var price in values)
             {
                 var isDiscount = pricesValues.Count() > 2 && values.Last() == price;
@@ -166,6 +167,7 @@ public class GetCardsFromRutter : IGetCardsFromRutter
                 var card = await _cardsRepository.GetCardByRutterCode(rutterCode);
                 if (card != null)
                 {
+                    card.CardItems.ForEach(x => x.Prices.Clear());
                     foreach (var description in cardDescriptions)
                     {
                         string[] lines = description.InnerText

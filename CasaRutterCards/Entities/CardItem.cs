@@ -34,6 +34,17 @@ public class CardItem : EntityBase
         Prices = new List<Price>();
     }
 
+    public void Update(int quantity, string quality, string extra)
+    {
+        Quantity = quantity;
+        if(!string.IsNullOrEmpty(quality))
+            Quality = quality;
+        if(!string.IsNullOrEmpty(extra))
+            Extra = extra;
+        
+        UpdatedAt = DateTime.Now;
+    }
+
     public void SetCardId(int id) => CardId = id;
     public void AddPrice(Price price) => Prices.Add(price);
 

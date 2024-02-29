@@ -1,14 +1,1 @@
-Card: Power Surge - doesnt have any prices [With Stock]
-Card: Chapel Geist - doesnt have any prices [With Stock]
-Card: Manabarbs - Edition: Magic 2012 - Quality: SP - Quantity in stock:2- Price: 17,99
-Card: Overabundance - doesnt have any prices [With Stock]
-Card: Quest for Renewal - doesnt have any prices [With Stock]
-Card: War's Toll - doesnt have any prices [With Stock]
-Card: Wound Reflection - doesnt have any prices [With Stock]
-Card: Power Surge - doesnt have any prices [With Stock]
-Card: Chapel Geist - doesnt have any prices [With Stock]
-Card: Manabarbs - Edition: Magic 2012 - Quality: SP - Quantity in stock:2- Price: 9,71
-Card: Overabundance - doesnt have any prices [With Stock]
-Card: Quest for Renewal - doesnt have any prices [With Stock]
-Card: War's Toll - doesnt have any prices [With Stock]
-Card: Wound Reflection - doesnt have any prices [With Stock]
+Card: Manabarbs | Edition: Magic 2012 | Quality: 1 unid. | Extra: - | Quantity in stock:1 | Price: 17,99

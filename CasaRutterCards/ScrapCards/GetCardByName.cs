@@ -15,7 +15,7 @@ public class GetCardByName : IGetCardByName
         _getCardsFromRutter = getCardsFromRutter;
     }
     
-    public async Task Get(string name)
+    public async Task<List<Card>> Get(string name)
     {
         Console.WriteLine($"Trying to get lastest version of Card:{name}");
         
@@ -45,10 +45,12 @@ public class GetCardByName : IGetCardByName
         {
             Console.WriteLine($"Card Not found: {name}");
         }
+
+        return await _cardsRepository.GetCardByName(name);
     }
 }
 
 public interface IGetCardByName
 {
-    Task Get(string name);
+    Task<List<Card>> Get(string name);
 }

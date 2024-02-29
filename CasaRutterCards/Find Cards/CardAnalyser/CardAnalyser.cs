@@ -76,21 +76,21 @@ public class CardAnalyser : ICardAnalyser
     
     private string WriteRow(Card card, CardItem item)
     {
-        var row = $@"Card: {card.GetName()} - Edition: {item.Edition.Name} "
-                  + $"- Quality: {item.Quality} ";
+        var row = $@"Card: {card.GetName()} | Edition: {item.Edition.Name} "
+                  + $"| Quality: {item.Quality} ";
 
         if (string.IsNullOrWhiteSpace(item.Extra) is false)
-            row += $"- Extra: {item.Extra} ";
+            row += $"| Extra: {item.Extra} ";
 
         if (item.Quantity > 0)
         {
-            row += $"- Quantity in stock:{item.Quantity}";
+            row += $"| Quantity in stock:{item.Quantity} ";
         }
         
-        row += $"- Price: {item.Prices.Min(price => price.Value)}";
+        row += $"| Price: {item.Prices.Min(price => price.Value)}";
         
         if (item.Prices.Any(x => x.HasDiscont))
-            row += $" (Card With Discount! Original Price: {item.Prices.Max(x => x.Value)})";
+            row += $"|  (Card With Discount! Original Price: {item.Prices.Max(x => x.Value)})";
 
         return row;
     }
