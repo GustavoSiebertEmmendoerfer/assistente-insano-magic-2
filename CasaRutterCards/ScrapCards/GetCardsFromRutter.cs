@@ -70,7 +70,7 @@ public class GetCardsFromRutter : IGetCardsFromRutter
             }
             else
             {
-                item.Update(int.Parse(quantity.Replace("unid.", "")), quantity, extra);
+                item.Update(int.Parse(quantity.Replace("unid.", "")), quality, extra);
             }
             
             SetPrices(pricesValues, item);

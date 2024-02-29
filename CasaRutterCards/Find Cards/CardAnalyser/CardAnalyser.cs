@@ -1,4 +1,5 @@
 using System.Text;
+using System.Xml.Linq;
 using CasaRutterCards.Entities;
 using CasaRutterCards.Infra;
 
@@ -19,35 +20,54 @@ public class CardAnalyser : ICardAnalyser
 
     public async Task<StringBuilder> Analyse(string[] cardNames, bool withStock)
     {
-        foreach (var cardName in cardNames)
+        var dic = new Dictionary<string, int>();
+        foreach (var x in cardNames)
         {
-            await _getCardByName.Get(cardName);
-            var cardsWithSameName = await _repository.GetCardByName(cardName);
+            int value = 1;
+            var name = x;
+            
+            var indexEmpty = x.IndexOf(' ');
+            if (indexEmpty > 0)
+            {
+                var indexNumber = x.Substring(0, indexEmpty);
+                if (int.TryParse(indexNumber, out value))
+                {
+                    name = x.Substring(indexEmpty);
+                }
+            }
+            
+            dic.Add(name, value);
+        }
+        
+        foreach (var keyValue in dic)
+        {
+            await _getCardByName.Get(keyValue.Key);
+            var cardsWithSameName = await _repository.GetCardByName(keyValue.Key);
 
             if (cardsWithSameName.Any() is false)
             {
-                await _getCardByName.Get(cardName);
-                _response.AppendLine($"Card: {cardName} was not found in database");
+                await _getCardByName.Get(keyValue.Key);
+                _response.AppendLine($"Card: {keyValue} was not found in database");
             }
             else if (cardsWithSameName.Count > 1)
             {
-                _response.AppendLine($"Card: {cardName} has {cardsWithSameName.Count} results");
+                _response.AppendLine($"Card: {keyValue} has {cardsWithSameName.Count} results");
                 foreach (var card in cardsWithSameName)
                 {
-                    WriteCardSpecs(card, withStock);
+                    WriteCardSpecs(card, withStock, keyValue.Value);
                 }
             }
             else
             {
                 var card = cardsWithSameName.First();
-                WriteCardSpecs(card, withStock);
+                WriteCardSpecs(card, withStock, keyValue.Value);
             }
         }
 
         return _response;
     }
 
-    private void WriteCardSpecs(Card card, bool withStock)
+    private void WriteCardSpecs(Card card, bool withStock, int quantity)
     {
         var cardItems = card.CardItems.Where(x => x.Prices.Any()).ToList();
          
@@ -65,7 +85,7 @@ public class CardAnalyser : ICardAnalyser
         
         var item = GetCheapestCard(cardItems);
         
-        _response.AppendLine(WriteRow(card, item));
+        _response.AppendLine(WriteRow(card, item, quantity));
     }
     
     private CardItem? GetCheapestCard(IEnumerable<CardItem> items)
@@ -74,7 +94,7 @@ public class CardAnalyser : ICardAnalyser
             .Min(price => price.Value));
     }
     
-    private string WriteRow(Card card, CardItem item)
+    private string WriteRow(Card card, CardItem item, int quantity)
     {
         var row = $@"Card: {card.GetName()} | Edition: {item.Edition.Name} "
                   + $"| Quality: {item.Quality} ";
@@ -87,7 +107,7 @@ public class CardAnalyser : ICardAnalyser
             row += $"| Quantity in stock:{item.Quantity} ";
         }
         
-        row += $"| Price: {item.Prices.Min(price => price.Value)}";
+        row += $"|Price: {item.Prices.Min(price => price.Value) * quantity}";
         
         if (item.Prices.Any(x => x.HasDiscont))
             row += $"|  (Card With Discount! Original Price: {item.Prices.Max(x => x.Value)})";
